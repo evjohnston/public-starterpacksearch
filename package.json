@@ -1,0 +1,27 @@
+{
+  "name": "public-starterpacksearch",
+  "version": "1.0.0",
+  "description": "Bluesky starter pack search",
+  "main": "search.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evjohnston/public-starterpacksearch.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/evjohnston/public-starterpacksearch/issues"
+  },
+  "homepage": "https://github.com/evjohnston/public-starterpacksearch#readme",
+  "dependencies": {
+    "@atproto/api": "^0.13.21",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "p-limit": "^6.2.0"
+  }
+}
