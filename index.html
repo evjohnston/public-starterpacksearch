@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluesky Starter Pack Search</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loading {
+            display: none;
+        }
+        .loading.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">
+            Bluesky Starter Pack Search
+        </h1>
+
+        <!-- Login Form -->
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Login Credentials</h2>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label for="handle" class="block text-sm font-medium text-gray-600 mb-2">
+                        Bluesky Handle
+                    </label>
+                    <div class="flex">
+                        <input type="text" 
+                               id="handle" 
+                               class="w-full px-3 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="yourusername" 
+                               required>
+                        <span class="px-3 py-2 bg-gray-100 border border-l-0 rounded-r-lg text-gray-500">.bsky.social</span>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="block text-sm font-medium text-gray-600 mb-2">
+                        Password
+                    </label>
+                    <input type="password" 
+                           id="password" 
+                           class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           required>
+                </div>
+            </form>
+        </div>
+
+        <!-- Search Form -->
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Search</h2>
+            <form id="searchForm" class="flex gap-4">
+                <input type="text" 
+                       id="searchTerm" 
+                       class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Enter search term..."
+                       required>
+                <button type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Search
+                </button>
+            </form>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading max-w-md mx-auto text-center mb-8">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-600">Searching starter packs...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="max-w-4xl mx-auto">
+            <div id="resultsList" class="grid gap-4"></div>
+        </div>
+    </div>
+
+    <!-- Download Button (Hidden initially) -->
+    <div id="downloadContainer" class="fixed bottom-4 right-4 hidden">
+        <button id="downloadButton" 
+                class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 shadow-lg">
+            Download CSV
+        </button>
+    </div>
+
+    <script>
+        const searchForm = document.getElementById('searchForm');
+        const loading = document.getElementById('loading');
+        const resultsList = document.getElementById('resultsList');
+        const downloadContainer = document.getElementById('downloadContainer');
+        const downloadButton = document.getElementById('downloadButton');
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const handleInput = document.getElementById('handle').value;
+            const handle = `${handleInput}.bsky.social`;
+            const password = document.getElementById('password').value;
+            const searchTerm = document.getElementById('searchTerm').value;
+
+            if (!handleInput || !password || !searchTerm) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Show loading
+            loading.classList.add('active');
+            resultsList.innerHTML = '';
+            downloadContainer.classList.add('hidden');
+
+            try {
+                // Make request to your backend
+                const response = await fetch('http://localhost:3000/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        handle,
+                        password,
+                        searchTerm
+                    })
+                });
+
+                const data = await response.json();
+
+                // Display results
+                if (data.length > 0) {
+                    data.forEach(pack => {
+                        const packElement = document.createElement('div');
+                        packElement.className = 'bg-white rounded-lg shadow-md p-6';
+                        packElement.innerHTML = `
+                            <h3 class="text-xl font-semibold mb-2">${pack.name}</h3>
+                            <p class="text-gray-600 mb-2">${pack.description}</p>
+                            <p class="text-sm text-gray-500 mb-2">Owner: ${pack.owner}</p>
+                            <p class="text-sm text-gray-500 mb-2">Items: ${pack.itemCount}</p>
+                            <p class="text-sm text-gray-500 mb-2">Total Joins: ${pack.totalJoins}</p>
+                            <a href="${pack.url}" target="_blank" class="text-blue-600 hover:underline">View Pack</a>
+                        `;
+                        resultsList.appendChild(packElement);
+                    });
+                    
+                    // Show download button
+                    downloadContainer.classList.remove('hidden');
+                } else {
+                    resultsList.innerHTML = '<p class="text-center text-gray-600">No starter packs found</p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultsList.innerHTML = '<p class="text-center text-red-600">An error occurred while searching</p>';
+            } finally {
+                loading.classList.remove('active');
+            }
+        });
+
+        // Handle download
+        downloadButton.addEventListener('click', () => {
+            // Add download functionality here
+        });
+    </script>
+
+    <!-- Help Box -->
+    <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-8 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Why do we need your credentials?</h2>
+        <p class="text-gray-600 mb-4">
+            Bluesky API requires authentication to search for starter packs. We need your credentials to make API requests on your behalf.
+        </p>
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div class="flex">
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        <strong>Important:</strong> Your credentials are used only for API authentication and are never stored. 
+                        They are transmitted directly to Bluesky's servers and are not saved anywhere.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-gray-500 text-sm py-4">
+        <p>This form does not save your credentials.</p>
+    </footer>
+
+</body>
+</html>

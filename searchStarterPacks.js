@@ -1,9 +1,17 @@
+import express from 'express';
 import { BskyAgent } from '@atproto/api';
-import dotenv from 'dotenv';
-import fs from 'fs';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pLimit from 'p-limit';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(__dirname));
 
 function uriToUrl(uri, handle) {
     if (!uri.startsWith('at://')) return null;
@@ -17,10 +25,10 @@ function cleanForCSV(text) {
     return text.replace(/[\n\r,]/g, ' ').trim();
 }
 
-async function searchAndGetStarterPacks(query = 'technology') {
-    let allPacksData = [];
-    // Create a rate limiter that allows 5 concurrent requests
+app.post('/search', async (req, res) => {
+    const { handle, password, searchTerm } = req.body;
     const limit = pLimit(5);
+    let allPacksData = [];
 
     try {
         const agent = new BskyAgent({
@@ -29,20 +37,19 @@ async function searchAndGetStarterPacks(query = 'technology') {
 
         console.log('Connecting to Bluesky...');
         await agent.login({
-            identifier: process.env.BLUESKY_HANDLE,
-            password: process.env.BLUESKY_PASSWORD
+            identifier: handle,
+            password: password
         });
 
         const searchResponse = await agent.api.app.bsky.actor.searchActorsTypeahead({
-            term: query,
+            term: searchTerm,
             limit: 100
         });
 
         if (searchResponse.data.actors) {
             const actors = searchResponse.data.actors;
-            console.log(`Found ${actors.length} users for "${query}"`);
+            console.log(`Found ${actors.length} users for "${searchTerm}"`);
 
-            // Create an array of promises for fetching starter packs
             const fetchPromises = actors.map(actor => limit(async () => {
                 try {
                     let allStarterPacks = [];
@@ -77,36 +84,25 @@ async function searchAndGetStarterPacks(query = 'technology') {
                 }
             }));
 
-            // Process all promises in parallel with rate limiting
             const results = await Promise.all(fetchPromises);
-            
-            // Flatten results array and add to allPacksData
             allPacksData = results.flat();
-
-            // Write to CSV file
-            if (allPacksData.length > 0) {
-                const csvHeader = 'Name,Description,URL,Owner,Item Count,Total Joins\n';
-                const csvRows = allPacksData.map(pack => 
-                    `${pack.name},${pack.description},${pack.url},${pack.owner},${pack.itemCount},${pack.totalJoins}`
-                ).join('\n');
-
-                const filename = `starter_packs_${query}_${new Date().toISOString().split('T')[0]}.csv`;
-                fs.writeFileSync(filename, csvHeader + csvRows);
-                console.log(`\nSaved ${allPacksData.length} starter packs to ${filename}`);
-            } else {
-                console.log('\nNo starter packs found to save');
-            }
+            
+            res.json(allPacksData);
+        } else {
+            res.json([]);
         }
 
     } catch (error) {
-        console.error('Error:', {
-            message: error.message,
+        console.error('Error:', error);
+        res.status(500).json({ 
+            error: error.message,
             status: error.status,
-            data: error.data,
-            details: error.response?.data
+            details: error.response?.data 
         });
     }
-}
+});
 
-// Execute search
-searchAndGetStarterPacks('sociology');
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
